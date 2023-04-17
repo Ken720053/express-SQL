@@ -13,55 +13,91 @@ const app = express();
 app.use(express.json());
 const port = 3000;
 
+function getConnection() {
+    return new Promise((resolve , reject) =>{
+        pool.getConnection((err,conn)=>{
+            if(err) reject(err);
+            else resolve(conn);
+        });
+    });
+}
 
+function executeQuery(conn,query,data){
+    return new Promise((resolve , reject) =>{
+        conn.query(query,data, (err,results,fields) =>{
+            if(err) reject(err);
+            else resolve({results , fields});
+        });
+    });
+}
 //新增users
 app.post('/',async (req,res) =>{
-    // const todoID = req.query.todo_id;
-    // const todoTitle = req.query.todo_title;
-    pool.getConnection((err,conn) => {
-        if(err){
-            console.log('err');
-        };
-        conn.query("INSERT INTO todo VALUES (? , ? )",
-        [req.body.id , req.body.title], 
-        (err, results , fields) => {
-            res.setHeader('Content-Type', 'application/JSON');
-            res.write(JSON.stringify(results));
-            res.end();
-        });
-        
-    });
+    const conn = await getConnection();
+    const {results , fields} = await executeQuery(
+        conn ,
+        "INSERT INTO todo VALUES (? , ? )",
+        [req.body.id , req.body.title]
+    );
+    res.setHeader('Content-Type', 'application/JSON');
+    res.write(JSON.stringify(results));
+    res.end();
 });
 
 //取得所有users
-// app.get('/',async (req,res) =>{
-//     const usersId = req.query.users_id;
-//     const usersName = req.query.users_name;
-//     pool.getConnection((err,conn) =>{
-//         conn.query(
-//             "INSERT INTO users VALUES (? , ?)",
-//             [usersId , usersName],
-//             (err,result,fields) =>{
-//                 res.write("Hello World!");
-//                 res.end();
-//             }
-//         );
-//     });
-// });
+app.get('/',async (req,res) =>{
+    const conn = await getConnection();
+    const {results , fields} = await executeQuery(
+        conn ,
+        "SELECT * FROM todo");
+    res.setHeader('Content-Type', 'application/JSON');
+    res.write(JSON.stringify(results));
+    res.end();
+});
 
 //取得某個users
 app.get('/:id',async (req,res) =>{
-
+    const conn = await getConnection();
+    let {results , fields} = await executeQuery(
+        conn ,
+        "SELECT * FROM todo WHERE id=?",
+        [req.params.id]
+    );
+    if(results.length > 0) results = results[0];
+    else {
+        res.status(404);
+        res.write("Not found");
+        res.end();
+        return;
+    };
+    res.setHeader('Content-Type', 'application/JSON');
+    res.write(JSON.stringify(results));
+    res.end();
 });
 
 //更新某個users
 app.put('/:id',async (req,res) =>{
-
+    const conn = await getConnection();
+    const {results , fields} = await executeQuery(
+        conn ,
+        "UPDATE todo SET title=? WHERE id=?",
+        [req.body.title , req.params.id]
+    );
+    res.setHeader('Content-Type', 'application/JSON');
+    res.write(JSON.stringify(results));
+    res.end();
 });
 
 //刪除某個users
 app.delete('/:id',async (req,res) =>{
-
+    const conn = await getConnection();
+    const {results , fields} = await executeQuery(
+        conn ,
+        "DELETE FROM todo WHERE id=?",
+        [req.params.id]
+    );
+    res.setHeader('Content-Type', 'application/JSON');
+    res.write(JSON.stringify(results));
+    res.end();
 });
 
 app.listen(port, ()=>{
