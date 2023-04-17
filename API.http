@@ -2,20 +2,20 @@ POST http://localhost:3000/
 Content-Type: application/json
 
 {
-    "id": 8,
-    "title":"qenny"
+    "id": 2,
+    "title":"Aenny"
 }
 ###
 GET http://localhost:3000/
 
 ###
-GET http://localhost:3000/3
+GET http://localhost:3000/2
 ###
-PUT  http://localhost:3000/5
+PUT  http://localhost:3000/2
 Content-Type: application/json
 
 {
     "title":"Happy"
 }
 ###
-DELETE  http://localhost:3000/3
+DELETE  http://localhost:3000/1

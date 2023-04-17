@@ -1,5 +1,13 @@
 import express, { response } from 'express';
 import mysql from 'mysql';
+import sequelizePackage  from 'sequelize';
+const {DataTypes , Model , Sequelize} = sequelizePackage;
+
+const sqlize = new Sequelize('Todolist','root','James8416801',{
+    host:'localhost',
+    dialect: 'mysql',
+
+})
 
 const pool = mysql.createPool({
     host:'localhost',
@@ -9,94 +17,69 @@ const pool = mysql.createPool({
     prot:'3306'
 });
 
+try{
+    await sqlize.authenticate();
+    console.log('Connect to mysql server sccueefully');
+}catch(err){
+    console.error('Cannot connect to mysql server!');
+}
+
+class Todo extends Model{}
+
+Todo.init(
+    {
+    id:{type:DataTypes.INTEGER, primaryKey : true},
+    title:{type: DataTypes.STRING},
+    },
+    {sequelize: sqlize, modelName:'Todo', tableName:'Todo'}
+);
+
+Todo.sync();
+
+
 const app = express();
 app.use(express.json());
 const port = 3000;
-
-function getConnection() {
-    return new Promise((resolve , reject) =>{
-        pool.getConnection((err,conn)=>{
-            if(err) reject(err);
-            else resolve(conn);
-        });
-    });
-}
-
-function executeQuery(conn,query,data){
-    return new Promise((resolve , reject) =>{
-        conn.query(query,data, (err,results,fields) =>{
-            if(err) reject(err);
-            else resolve({results , fields});
-        });
-    });
-}
+const results = []
 //新增users
 app.post('/',async (req,res) =>{
-    const conn = await getConnection();
-    const {results , fields} = await executeQuery(
-        conn ,
-        "INSERT INTO todo VALUES (? , ? )",
-        [req.body.id , req.body.title]
-    );
+    const newTodo = await Todo.create({id:req.body.id , title:req.body.title});
     res.setHeader('Content-Type', 'application/JSON');
-    res.write(JSON.stringify(results));
+    res.write(JSON.stringify(newTodo.toJSON()));
     res.end();
 });
 
 //取得所有users
 app.get('/',async (req,res) =>{
-    const conn = await getConnection();
-    const {results , fields} = await executeQuery(
-        conn ,
-        "SELECT * FROM todo");
+    const AllTodo = await Todo.findAll();
     res.setHeader('Content-Type', 'application/JSON');
-    res.write(JSON.stringify(results));
+    res.write(JSON.stringify(AllTodo));
     res.end();
 });
 
 //取得某個users
 app.get('/:id',async (req,res) =>{
-    const conn = await getConnection();
-    let {results , fields} = await executeQuery(
-        conn ,
-        "SELECT * FROM todo WHERE id=?",
-        [req.params.id]
-    );
-    if(results.length > 0) results = results[0];
-    else {
-        res.status(404);
-        res.write("Not found");
-        res.end();
-        return;
-    };
+    const ThisTodo = await Todo.findByPk(req.params.id);
     res.setHeader('Content-Type', 'application/JSON');
-    res.write(JSON.stringify(results));
+    res.write(JSON.stringify(ThisTodo));
     res.end();
 });
 
 //更新某個users
 app.put('/:id',async (req,res) =>{
-    const conn = await getConnection();
-    const {results , fields} = await executeQuery(
-        conn ,
-        "UPDATE todo SET title=? WHERE id=?",
-        [req.body.title , req.params.id]
-    );
+    const ThisTodo = await Todo.findByPk(req.params.id);
+    ThisTodo.set('title' ,req.body.title);
+    ThisTodo.save();
     res.setHeader('Content-Type', 'application/JSON');
-    res.write(JSON.stringify(results));
+    res.write(JSON.stringify(ThisTodo.toJSON()));
     res.end();
 });
 
 //刪除某個users
 app.delete('/:id',async (req,res) =>{
-    const conn = await getConnection();
-    const {results , fields} = await executeQuery(
-        conn ,
-        "DELETE FROM todo WHERE id=?",
-        [req.params.id]
-    );
+    await Todo.destroy({where:{id:req.params.id}});
     res.setHeader('Content-Type', 'application/JSON');
-    res.write(JSON.stringify(results));
+    res.write('ok');
     res.end();
 });
 
